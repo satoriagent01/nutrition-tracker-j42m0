@@ -1,55 +1,146 @@
-// In-memory store for products, meals, and OCR config
-const products = new Map();
-const meals = new Map();
-let ocrConfig = null;
+/**
+ * Storage module using localStorage for persistence.
+ * All functions are async to match the test expectations.
+ */
 
-function saveProduct(product) {
-  products.set(product.id, product);
-  return Promise.resolve();
+const PRODUCTS_KEY = 'nutrition_tracker_products';
+const MEALS_KEY = 'nutrition_tracker_meals';
+const OCR_CONFIG_KEY = 'nutrition_tracker_ocr_config';
+
+/**
+ * Parse a JSON value from localStorage, returning null on failure.
+ */
+function parseStorage(key) {
+  try {
+    const data = localStorage.getItem(key);
+    if (data === null) return null;
+    return JSON.parse(data);
+  } catch {
+    return null;
+  }
 }
 
-function getProduct(id) {
-  const product = products.get(id);
-  return Promise.resolve(product || null);
+/**
+ * Save a JSON value to localStorage.
+ */
+function saveStorage(key, value) {
+  localStorage.setItem(key, JSON.stringify(value));
 }
 
-function getAllProducts() {
-  return Promise.resolve(Array.from(products.values()));
+/**
+ * Save a product.
+ * @param {Object} product - Product object
+ * @returns {Promise<void>}
+ */
+export async function saveProduct(product) {
+  const products = parseStorage(PRODUCTS_KEY) || [];
+  const existingIndex = products.findIndex(p => p.id === product.id);
+  if (existingIndex >= 0) {
+    products[existingIndex] = product;
+  } else {
+    products.push(product);
+  }
+  saveStorage(PRODUCTS_KEY, products);
 }
 
-function deleteProduct(id) {
-  products.delete(id);
-  return Promise.resolve();
+/**
+ * Get a product by ID.
+ * @param {string} id - Product ID
+ * @returns {Promise<Object|null>}
+ */
+export async function getProduct(id) {
+  const products = parseStorage(PRODUCTS_KEY) || [];
+  const product = products.find(p => p.id === id);
+  return product || null;
 }
 
-function saveMeal(meal) {
-  meals.set(meal.id, meal);
-  return Promise.resolve();
+/**
+ * Get all products.
+ * @returns {Promise<Array>}
+ */
+export async function getAllProducts() {
+  const products = parseStorage(PRODUCTS_KEY) || [];
+  return products;
 }
 
-function getMeal(id) {
-  const meal = meals.get(id);
-  return Promise.resolve(meal || null);
+/**
+ * Delete a product by ID.
+ * @param {string} id - Product ID
+ * @returns {Promise<void>}
+ */
+export async function deleteProduct(id) {
+  const products = parseStorage(PRODUCTS_KEY) || [];
+  const filtered = products.filter(p => p.id !== id);
+  saveStorage(PRODUCTS_KEY, filtered);
 }
 
-function getMealsByDate(date) {
-  return Promise.resolve(
-    Array.from(meals.values()).filter((m) => m.date === date)
-  );
+/**
+ * Save a meal.
+ * @param {Object} meal - Meal object
+ * @returns {Promise<void>}
+ */
+export async function saveMeal(meal) {
+  const meals = parseStorage(MEALS_KEY) || [];
+  const existingIndex = meals.findIndex(m => m.id === meal.id);
+  if (existingIndex >= 0) {
+    meals[existingIndex] = meal;
+  } else {
+    meals.push(meal);
+  }
+  saveStorage(MEALS_KEY, meals);
 }
 
-function getAllMeals() {
-  return Promise.resolve(Array.from(meals.values()));
+/**
+ * Get a meal by ID.
+ * @param {string} id - Meal ID
+ * @returns {Promise<Object|null>}
+ */
+export async function getMeal(id) {
+  const meals = parseStorage(MEALS_KEY) || [];
+  const meal = meals.find(m => m.id === id);
+  return meal || null;
 }
 
-function deleteMeal(id) {
-  meals.delete(id);
-  return Promise.resolve();
+/**
+ * Get meals by date.
+ * @param {string} date - Date string (YYYY-MM-DD)
+ * @returns {Promise<Array>}
+ */
+export async function getMealsByDate(date) {
+  const meals = parseStorage(MEALS_KEY) || [];
+  return meals.filter(m => m.date === date);
 }
 
-function getDailyLog(date) {
-  const dayMeals = Array.from(meals.values()).filter((m) => m.date === date);
-  const total = {
+/**
+ * Get all meals.
+ * @returns {Promise<Array>}
+ */
+export async function getAllMeals() {
+  const meals = parseStorage(MEALS_KEY) || [];
+  return meals;
+}
+
+/**
+ * Delete a meal by ID.
+ * @param {string} id - Meal ID
+ * @returns {Promise<void>}
+ */
+export async function deleteMeal(id) {
+  const meals = parseStorage(MEALS_KEY) || [];
+  const filtered = meals.filter(m => m.id !== id);
+  saveStorage(MEALS_KEY, filtered);
+}
+
+/**
+ * Get daily log for a date - returns meals and total nutrition.
+ * @param {string} date - Date string (YYYY-MM-DD)
+ * @returns {Promise<Object>}
+ */
+export async function getDailyLog(date) {
+  const meals = parseStorage(MEALS_KEY) || [];
+  const dayMeals = meals.filter(m => m.date === date);
+
+  const totalNutrition = {
     energyKj: 0,
     energyKcal: 0,
     fat: 0,
@@ -60,36 +151,42 @@ function getDailyLog(date) {
     protein: 0,
     salt: 0,
   };
+
   for (const meal of dayMeals) {
-    if (meal.totalNutrition) {
-      for (const key of Object.keys(total)) {
-        total[key] += meal.totalNutrition[key] || 0;
-      }
+    const total = meal.totalNutrition;
+    if (total) {
+      totalNutrition.energyKj += total.energyKj || 0;
+      totalNutrition.energyKcal += total.energyKcal || 0;
+      totalNutrition.fat += total.fat || 0;
+      totalNutrition.saturatedFat += total.saturatedFat || 0;
+      totalNutrition.carbohydrates += total.carbohydrates || 0;
+      totalNutrition.sugars += total.sugars || 0;
+      totalNutrition.fiber += total.fiber || 0;
+      totalNutrition.protein += total.protein || 0;
+      totalNutrition.salt += total.salt || 0;
     }
   }
-  return Promise.resolve(total);
+
+  return {
+    date,
+    meals: dayMeals,
+    totalNutrition,
+  };
 }
 
-function saveOcrConfig(config) {
-  ocrConfig = config;
-  return Promise.resolve();
+/**
+ * Save OCR configuration.
+ * @param {Object} config - OCR config object with url, key, model
+ * @returns {Promise<void>}
+ */
+export async function saveOcrConfig(config) {
+  saveStorage(OCR_CONFIG_KEY, config);
 }
 
-function getOcrConfig() {
-  return Promise.resolve(ocrConfig);
+/**
+ * Get OCR configuration.
+ * @returns {Promise<Object|null>}
+ */
+export async function getOcrConfig() {
+  return parseStorage(OCR_CONFIG_KEY);
 }
-
-export {
-  saveProduct,
-  getProduct,
-  getAllProducts,
-  deleteProduct,
-  saveMeal,
-  getMeal,
-  getMealsByDate,
-  getAllMeals,
-  deleteMeal,
-  getDailyLog,
-  saveOcrConfig,
-  getOcrConfig,
-};
