@@ -1,6 +1,5 @@
 /**
  * Nutrition calculation module.
- * All functions are pure (no side effects).
  */
 
 /**
@@ -12,24 +11,25 @@
 export function calculateNutritionForAmount(nutritionPer100g, amountGrams) {
   const factor = amountGrams / 100;
 
-  const result = {
-    energyKj: nutritionPer100g.energyKj * factor,
-    energyKcal: nutritionPer100g.energyKcal * factor,
-    fat: nutritionPer100g.fat * factor,
-    saturatedFat: nutritionPer100g.saturatedFat * factor,
-    carbohydrates: nutritionPer100g.carbohydrates * factor,
-    sugars: nutritionPer100g.sugars * factor,
-    fiber: nutritionPer100g.fiber * factor,
-    protein: nutritionPer100g.protein * factor,
-    salt: nutritionPer100g.salt * factor,
-  };
+  const result = {};
+  for (const key of Object.keys(nutritionPer100g)) {
+    if (key === 'customFields' || key === 'servingSize' || key === 'servingAmount' || key === 'unit') {
+      continue;
+    }
+    const val = nutritionPer100g[key];
+    if (typeof val === 'number') {
+      result[key] = Math.round(val * factor * 1000) / 1000;
+    } else {
+      result[key] = val;
+    }
+  }
 
-  // Preserve customFields if present
+  // Preserve customFields
   if (nutritionPer100g.customFields) {
     result.customFields = { ...nutritionPer100g.customFields };
   }
 
-  // Preserve servingSize, servingAmount, unit if present
+  // Preserve serving info
   if (nutritionPer100g.servingSize !== undefined) {
     result.servingSize = nutritionPer100g.servingSize;
   }
@@ -61,31 +61,30 @@ export function calculateMealTotal(foodItems) {
     salt: 0,
   };
 
-  let hasCustomFields = false;
+  const customFields = {};
 
   for (const item of foodItems) {
     const n = item.nutrition;
     if (!n) continue;
 
-    total.energyKj += n.energyKj || 0;
-    total.energyKcal += n.energyKcal || 0;
-    total.fat += n.fat || 0;
-    total.saturatedFat += n.saturatedFat || 0;
-    total.carbohydrates += n.carbohydrates || 0;
-    total.sugars += n.sugars || 0;
-    total.fiber += n.fiber || 0;
-    total.protein += n.protein || 0;
-    total.salt += n.salt || 0;
+    for (const key of ['energyKj', 'energyKcal', 'fat', 'saturatedFat', 'carbohydrates', 'sugars', 'fiber', 'protein', 'salt']) {
+      total[key] += (n[key] || 0);
+    }
 
     if (n.customFields) {
-      hasCustomFields = true;
-      if (!total.customFields) {
-        total.customFields = {};
-      }
-      for (const [key, value] of Object.entries(n.customFields)) {
-        total.customFields[key] = (total.customFields[key] || 0) + value;
+      for (const [k, v] of Object.entries(n.customFields)) {
+        customFields[k] = (customFields[k] || 0) + v;
       }
     }
+  }
+
+  // Round all values
+  for (const key of Object.keys(total)) {
+    total[key] = Math.round(total[key] * 1000) / 1000;
+  }
+
+  if (Object.keys(customFields).length > 0) {
+    total.customFields = customFields;
   }
 
   return total;
@@ -98,31 +97,20 @@ export function calculateMealTotal(foodItems) {
  * @returns {Object} Summed nutrition object
  */
 export function sumNutrition(a, b) {
-  const result = {
-    energyKj: (a.energyKj || 0) + (b.energyKj || 0),
-    energyKcal: (a.energyKcal || 0) + (b.energyKcal || 0),
-    fat: (a.fat || 0) + (b.fat || 0),
-    saturatedFat: (a.saturatedFat || 0) + (b.saturatedFat || 0),
-    carbohydrates: (a.carbohydrates || 0) + (b.carbohydrates || 0),
-    sugars: (a.sugars || 0) + (b.sugars || 0),
-    fiber: (a.fiber || 0) + (b.fiber || 0),
-    protein: (a.protein || 0) + (b.protein || 0),
-    salt: (a.salt || 0) + (b.salt || 0),
-  };
-
-  // Merge customFields from both objects
-  const aCustom = a.customFields || {};
-  const bCustom = b.customFields || {};
-  const mergedCustom = { ...aCustom, ...bCustom };
-
-  // Sum numeric values for keys present in both
-  for (const key of Object.keys(aCustom)) {
-    if (bCustom.hasOwnProperty(key)) {
-      mergedCustom[key] = aCustom[key] + bCustom[key];
-    }
+  const result = {};
+  for (const key of ['energyKj', 'energyKcal', 'fat', 'saturatedFat', 'carbohydrates', 'sugars', 'fiber', 'protein', 'salt']) {
+    result[key] = Math.round(((a[key] || 0) + (b[key] || 0)) * 1000) / 1000;
   }
 
-  // Only include customFields if there are any
+  // Merge customFields
+  const mergedCustom = {};
+  const aCustom = a.customFields || {};
+  const bCustom = b.customFields || {};
+
+  for (const key of new Set([...Object.keys(aCustom), ...Object.keys(bCustom)])) {
+    mergedCustom[key] = (aCustom[key] || 0) + (bCustom[key] || 0);
+  }
+
   if (Object.keys(mergedCustom).length > 0) {
     result.customFields = mergedCustom;
   }
@@ -138,26 +126,10 @@ export function sumNutrition(a, b) {
  * @returns {Object} New nutrition object with custom field added
  */
 export function addCustomField(nutrition, field, value) {
-  const result = {
-    energyKj: nutrition.energyKj,
-    energyKcal: nutrition.energyKcal,
-    fat: nutrition.fat,
-    saturatedFat: nutrition.saturatedFat,
-    carbohydrates: nutrition.carbohydrates,
-    sugars: nutrition.sugars,
-    fiber: nutrition.fiber,
-    protein: nutrition.protein,
-    salt: nutrition.salt,
-  };
-
-  // Preserve existing customFields
-  if (nutrition.customFields) {
-    result.customFields = { ...nutrition.customFields };
-  } else {
+  const result = { ...nutrition };
+  if (!result.customFields) {
     result.customFields = {};
   }
-
   result.customFields[field] = value;
-
   return result;
 }
