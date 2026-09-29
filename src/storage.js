@@ -7,25 +7,17 @@
 // In-memory store (default)
 let _store = {};
 
-// Try to use localStorage if available
-let _useLocalStorage = false;
-try {
-  if (typeof localStorage !== 'undefined') {
-    localStorage.setItem('__test__', '1');
-    localStorage.removeItem('__test__');
-    _useLocalStorage = true;
-  }
-} catch (e) {
-  // localStorage not available, use in-memory store
-}
-
 /**
  * Read all data from the store.
  */
 function readStore() {
-  if (_useLocalStorage) {
-    const data = localStorage.getItem('nutrition-tracker');
-    return data ? JSON.parse(data) : {};
+  if (typeof localStorage !== 'undefined') {
+    try {
+      const data = localStorage.getItem('nutrition-tracker');
+      return data ? JSON.parse(data) : {};
+    } catch (e) {
+      return _store;
+    }
   }
   return _store;
 }
@@ -34,10 +26,28 @@ function readStore() {
  * Write all data to the store.
  */
 function writeStore(data) {
-  if (_useLocalStorage) {
-    localStorage.setItem('nutrition-tracker', JSON.stringify(data));
+  if (typeof localStorage !== 'undefined') {
+    try {
+      localStorage.setItem('nutrition-tracker', JSON.stringify(data));
+    } catch (e) {
+      // localStorage not available, fall back to in-memory
+    }
   } else {
     _store = data;
+  }
+}
+
+/**
+ * Reset the in-memory store. Used by tests to isolate test cases.
+ */
+export function resetStore() {
+  _store = {};
+  if (typeof localStorage !== 'undefined') {
+    try {
+      localStorage.removeItem('nutrition-tracker');
+    } catch (e) {
+      // ignore
+    }
   }
 }
 
@@ -105,14 +115,14 @@ export async function getMeal(id) {
 }
 
 /**
- * Get meals by date.
+ * Get all meals for a specific date.
  * @param {string} date - Date string (YYYY-MM-DD)
  * @returns {Array} Array of meals for the date
  */
 export async function getMealsByDate(date) {
   const data = readStore();
   if (!data.meals) return [];
-  return Object.values(data.meals).filter(m => m.date === date);
+  return Object.values(data.meals).filter((meal) => meal.date === date);
 }
 
 /**
@@ -137,7 +147,7 @@ export async function deleteMeal(id) {
 }
 
 /**
- * Get daily log for a date (all meals + total nutrition).
+ * Get the daily log for a specific date.
  * @param {string} date - Date string (YYYY-MM-DD)
  * @returns {Object} Daily log with meals and total nutrition
  */
@@ -158,14 +168,11 @@ export async function getDailyLog(date) {
   for (const meal of meals) {
     if (meal.totalNutrition) {
       for (const key of Object.keys(totalNutrition)) {
-        totalNutrition[key] += meal.totalNutrition[key] || 0;
+        if (typeof meal.totalNutrition[key] === 'number') {
+          totalNutrition[key] += meal.totalNutrition[key];
+        }
       }
     }
-  }
-
-  // Round totals
-  for (const key of Object.keys(totalNutrition)) {
-    totalNutrition[key] = Math.round(totalNutrition[key] * 1000) / 1000;
   }
 
   return {
@@ -177,7 +184,7 @@ export async function getDailyLog(date) {
 
 /**
  * Save OCR configuration.
- * @param {Object} config - OCR config with url, key, model
+ * @param {Object} config - OCR config object
  */
 export async function saveOcrConfig(config) {
   const data = readStore();
