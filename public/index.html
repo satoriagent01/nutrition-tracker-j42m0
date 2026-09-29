@@ -1,0 +1,137 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Nutrition Tracker</title>
+  <link rel="stylesheet" href="styles.css">
+</head>
+<body>
+  <header>
+    <h1>🥗 Nutrition Tracker</h1>
+    <nav>
+      <button class="nav-btn active" data-screen="scan">📷 Escanear</button>
+      <button class="nav-btn" data-screen="library">📚 Productos</button>
+      <button class="nav-btn" data-screen="meal">🍽️ Comidas</button>
+      <button class="nav-btn" data-screen="summary">📊 Resumen</button>
+      <button class="nav-btn" data-screen="settings">⚙️ Ajustes</button>
+    </nav>
+  </header>
+
+  <main>
+    <!-- Scan Screen -->
+    <section id="scan-screen" class="screen active">
+      <h2>Escanear Etiqueta</h2>
+      <div class="upload-area" id="upload-area">
+        <p>Arrastra una foto aquí o haz clic para seleccionar</p>
+        <input type="file" id="file-input" accept="image/*" hidden>
+        <button id="camera-btn" class="btn">📷 Tomar Foto</button>
+        <button id="file-btn" class="btn">📁 Seleccionar Archivo</button>
+      </div>
+      <div id="preview-container" class="hidden">
+        <h3>Vista previa</h3>
+        <img id="preview-img" src="" alt="Vista previa">
+        <button id="extract-btn" class="btn btn-primary">🔍 Extraer Datos</button>
+        <button id="cancel-extract-btn" class="btn btn-secondary">Cancelar</button>
+      </div>
+      <div id="extraction-result" class="hidden">
+        <h3>Datos Extraídos</h3>
+        <div id="extraction-details"></div>
+        <div class="form-group">
+          <label for="product-name">Nombre del producto:</label>
+          <input type="text" id="product-name" placeholder="Nombre del producto">
+        </div>
+        <div class="form-group">
+          <label for="product-brand">Marca:</label>
+          <input type="text" id="product-brand" placeholder="Marca">
+        </div>
+        <button id="save-product-btn" class="btn btn-primary">💾 Guardar Producto</button>
+        <button id="discard-product-btn" class="btn btn-secondary">Descartar</button>
+      </div>
+      <div id="extraction-loading" class="hidden">
+        <p>⏳ Extrayendo datos...</p>
+      </div>
+    </section>
+
+    <!-- Library Screen -->
+    <section id="library-screen" class="screen">
+      <h2>Mis Productos</h2>
+      <div class="search-bar">
+        <input type="text" id="search-input" placeholder="Buscar productos...">
+      </div>
+      <div id="products-list" class="products-list">
+        <!-- Products will be dynamically added here -->
+      </div>
+      <div id="no-products" class="hidden">
+        <p>No hay productos guardados. ¡Escanea tu primera etiqueta!</p>
+      </div>
+    </section>
+
+    <!-- Meal Planner Screen -->
+    <section id="meal-screen" class="screen">
+      <h2>Planificador de Comidas</h2>
+      <div class="form-group">
+        <label for="meal-name">Nombre de la comida:</label>
+        <input type="text" id="meal-name" placeholder="Ej: Desayuno">
+      </div>
+      <div class="form-group">
+        <label for="meal-date">Fecha:</label>
+        <input type="date" id="meal-date">
+      </div>
+      <div id="food-items-container">
+        <!-- Food items will be dynamically added here -->
+      </div>
+      <button id="add-food-btn" class="btn btn-secondary">➕ Agregar Producto</button>
+      <button id="save-meal-btn" class="btn btn-primary">💾 Guardar Comida</button>
+      <div id="meal-totals" class="hidden">
+        <h3>Total Nutricional</h3>
+        <div id="meal-totals-details"></div>
+      </div>
+      <div id="meals-list">
+        <h3>Comidas Guardadas</h3>
+        <!-- Meals will be dynamically added here -->
+      </div>
+    </section>
+
+    <!-- Daily Summary Screen -->
+    <section id="summary-screen" class="screen">
+      <h2>Resumen Diario</h2>
+      <div class="form-group">
+        <label for="summary-date">Fecha:</label>
+        <input type="date" id="summary-date">
+      </div>
+      <div id="daily-summary" class="hidden">
+        <h3>Resumen Nutricional</h3>
+        <div id="summary-details"></div>
+        <h3>Comidas del Día</h3>
+        <div id="meals-summary"></div>
+      </div>
+      <div id="no-summary" class="hidden">
+        <p>No hay datos para esta fecha.</p>
+      </div>
+    </section>
+
+    <!-- Settings Screen -->
+    <section id="settings-screen" class="screen">
+      <h2>Ajustes</h2>
+      <div class="form-group">
+        <label for="ocr-url">URL del Endpoint OCR:</label>
+        <input type="text" id="ocr-url" placeholder="https://api.example.com/ocr">
+      </div>
+      <div class="form-group">
+        <label for="ocr-key">Clave API:</label>
+        <input type="password" id="ocr-key" placeholder="Tu clave API">
+      </div>
+      <div class="form-group">
+        <label for="ocr-model">Modelo:</label>
+        <input type="text" id="ocr-model" placeholder="model-name">
+      </div>
+      <button id="save-settings-btn" class="btn btn-primary">💾 Guardar Ajustes</button>
+      <button id="clear-settings-btn" class="btn btn-secondary">🗑️ Limpiar Ajustes</button>
+      <div id="settings-status" class="hidden"></div>
+    </section>
+  </main>
+
+  <script type="module" src="app.js"></script>
+</body>
+</html>
