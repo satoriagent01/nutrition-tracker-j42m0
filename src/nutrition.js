@@ -2,6 +2,11 @@
  * Nutrition calculation module.
  */
 
+const STANDARD_FIELDS = [
+  'energyKj', 'energyKcal', 'fat', 'saturatedFat',
+  'carbohydrates', 'sugars', 'fiber', 'protein', 'salt'
+];
+
 /**
  * Scales nutrition facts from per-100g to a given amount in grams.
  * @param {Object} nutritionPer100g - Nutrition facts per 100g
@@ -67,20 +72,17 @@ export function calculateMealTotal(foodItems) {
     const n = item.nutrition;
     if (!n) continue;
 
-    for (const key of ['energyKj', 'energyKcal', 'fat', 'saturatedFat', 'carbohydrates', 'sugars', 'fiber', 'protein', 'salt']) {
+    for (const key of STANDARD_FIELDS) {
       total[key] += (n[key] || 0);
     }
 
     if (n.customFields) {
       for (const [k, v] of Object.entries(n.customFields)) {
-        customFields[k] = (customFields[k] || 0) + v;
+        if (typeof v === 'number') {
+          customFields[k] = (customFields[k] || 0) + v;
+        }
       }
     }
-  }
-
-  // Round all values
-  for (const key of Object.keys(total)) {
-    total[key] = Math.round(total[key] * 1000) / 1000;
   }
 
   if (Object.keys(customFields).length > 0) {
@@ -91,39 +93,48 @@ export function calculateMealTotal(foodItems) {
 }
 
 /**
- * Adds two nutrition objects together.
- * @param {Object} a - First nutrition object
- * @param {Object} b - Second nutrition object
- * @returns {Object} Summed nutrition object
+ * Sums two nutrition facts objects field by field, including customFields.
+ * @param {Object} a - First nutrition facts
+ * @param {Object} b - Second nutrition facts
+ * @returns {Object} Summed nutrition facts
  */
 export function sumNutrition(a, b) {
   const result = {};
-  for (const key of ['energyKj', 'energyKcal', 'fat', 'saturatedFat', 'carbohydrates', 'sugars', 'fiber', 'protein', 'salt']) {
-    result[key] = Math.round(((a[key] || 0) + (b[key] || 0)) * 1000) / 1000;
+
+  for (const key of STANDARD_FIELDS) {
+    result[key] = (a[key] || 0) + (b[key] || 0);
   }
 
   // Merge customFields
-  const mergedCustom = {};
-  const aCustom = a.customFields || {};
-  const bCustom = b.customFields || {};
-
-  for (const key of new Set([...Object.keys(aCustom), ...Object.keys(bCustom)])) {
-    mergedCustom[key] = (aCustom[key] || 0) + (bCustom[key] || 0);
+  const customFields = {};
+  if (a.customFields) {
+    for (const [k, v] of Object.entries(a.customFields)) {
+      if (typeof v === 'number') {
+        customFields[k] = (customFields[k] || 0) + v;
+      }
+    }
+  }
+  if (b.customFields) {
+    for (const [k, v] of Object.entries(b.customFields)) {
+      if (typeof v === 'number') {
+        customFields[k] = (customFields[k] || 0) + v;
+      }
+    }
   }
 
-  if (Object.keys(mergedCustom).length > 0) {
-    result.customFields = mergedCustom;
+  if (Object.keys(customFields).length > 0) {
+    result.customFields = customFields;
   }
 
   return result;
 }
 
 /**
- * Adds a custom field to a nutrition object.
- * @param {Object} nutrition - Nutrition object
+ * Adds a custom field to nutrition facts.
+ * @param {Object} nutrition - Nutrition facts object
  * @param {string} field - Custom field name
  * @param {number} value - Custom field value
- * @returns {Object} New nutrition object with custom field added
+ * @returns {Object} New nutrition facts with custom field added
  */
 export function addCustomField(nutrition, field, value) {
   const result = { ...nutrition };
